@@ -48,10 +48,11 @@
   .sub { color: var(--suave); margin: 4px 0 0; font-size: 1.02rem; }
 
   .pasos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 28px; margin: 0; padding: 0; list-style: none; }
-  .paso { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 4px 14px; align-items: start; }
-  .num { font-weight: 800; font-size: 2.9rem; line-height: .9; color: var(--acento); grid-row: span 3; text-align: center; }
-  .paso h2 { font-weight: 800; font-size: 1.18rem; line-height: 1.15; margin: 0; text-wrap: balance; }
-  .paso p { margin: 0; }
+  .paso { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 0 14px; align-items: start; }
+  .num { font-weight: 800; font-size: 2.9rem; line-height: .9; color: var(--acento); grid-row: 1 / span 8; text-align: center; }
+  .paso > :not(.num) { grid-column: 2; }
+  .paso h2 { font-weight: 800; font-size: 1.18rem; line-height: 1.15; margin: 0 0 4px; text-wrap: balance; }
+  .paso p { margin: 0 0 4px; }
   .paso .muted { color: var(--suave); font-size: .92rem; }
   .btn {
     display: inline-block; font-weight: 700; font-size: .92rem; color: #fff; background: var(--acento);
