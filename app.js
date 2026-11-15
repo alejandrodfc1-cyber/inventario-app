@@ -10,7 +10,7 @@ const app = $('#app');
 const S = { user: null, perfil: null, emp: null, empresas: [], cats: [], provs: [], prods: [], q: '' };
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
-const VERSION = '2026-11-14.9';
+const VERSION = '2026-11-14.10';
 const negocio = () => S.emp?.nombre || CFG.negocio || '';
 const isAdmin = () => S.perfil?.rol === 'admin';
 const canEdit = () => ['admin', 'bodega'].includes(S.perfil?.rol);
@@ -842,7 +842,7 @@ const actions = {
   sexport: () => modal(`<h2>Exportar stock</h2><p class="mut" style="margin-top:0">Se exporta lo que ves ahora (filtros y búsqueda incluidos).</p>
     <button class="btn full" data-act="sshare">📤 Compartir como texto</button><p><button class="btn sec full" data-act="scsv">📊 Descargar para Excel (CSV)</button></p>
     <p><button class="btn sec full" data-act="sprint">🖨️ Imprimir / guardar PDF</button></p><button class="btn sec full" data-act="closemodal">Cerrar</button>`),
-  cmodo: d => { C.modo = d.m; viewConteo(); },
+  cmodo: d => { C.modo = d.m; C.manual = true; viewConteo(); }, // manual: respeta lo que eliges y no lo reemplaza por el modo automatico
   csave: (d, el) => guardarConteo(el),
   sshare: () => { closeModal(); shareStock(); },
   scsv: () => { closeModal(); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([stockCSV()], { type: 'text/csv;charset=utf-8' })); a.download = `stock-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); },
