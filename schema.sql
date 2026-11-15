@@ -107,6 +107,15 @@ drop trigger if exists inv_on_auth_user on auth.users;
 create trigger inv_on_auth_user after insert on auth.users
   for each row execute function inv_nuevo_usuario();
 
+-- ¿Puede esta cuenta crear una empresa? (admin de alguna, o instalacion inicial sin empresas)
+create or replace function inv_puede_crear_empresa() returns boolean
+language sql stable security definer set search_path = public as $$
+  select auth.uid() is not null and (
+    exists (select 1 from inv_miembros where user_id = auth.uid() and rol = 'admin')
+    or not exists (select 1 from inv_empresas)
+  );
+$$;
+
 -- Crear empresa (quien la crea queda como admin)
 create or replace function inv_crear_empresa(p_nombre text) returns uuid
 language plpgsql security definer set search_path = public as $$
@@ -114,11 +123,10 @@ declare e uuid; em text;
 begin
   if auth.uid() is null then raise exception 'Sin sesion'; end if;
   if coalesce(trim(p_nombre),'') = '' then raise exception 'Escribe el nombre de la empresa'; end if;
-  -- Quien ya pertenece a una empresa solo puede crear otra si es administrador de alguna (Bodega y Solo lectura no).
-  -- Quien aun no pertenece a ninguna (cuenta nueva) si puede crear la suya.
-  if exists (select 1 from inv_miembros where user_id = auth.uid())
-     and not exists (select 1 from inv_miembros where user_id = auth.uid() and rol = 'admin') then
-    raise exception 'Solo un administrador puede crear otra empresa';
+  -- Solo puede crear empresas: (a) un administrador de alguna empresa, o (b) la primera cuenta
+  -- cuando todavia no existe ninguna empresa (instalacion inicial). Cualquier otra cuenta nueva NO puede.
+  if not inv_puede_crear_empresa() then
+    raise exception 'Solo un administrador puede crear empresas. Pidele que te agregue a la suya.';
   end if;
   select email into em from inv_perfiles where id = auth.uid();
   insert into inv_empresas(nombre, creada_por) values (trim(p_nombre), auth.uid()) returning id into e;
@@ -253,6 +261,8 @@ create policy img_del on storage.objects for delete to authenticated
 -- Las funciones que modifican datos solo las puede llamar un usuario con sesion (no el publico anonimo)
 revoke execute on function inv_mover_stock(uuid, text, numeric, text) from public, anon;
 revoke execute on function inv_crear_empresa(text) from public, anon;
+revoke execute on function inv_puede_crear_empresa() from public, anon;
+grant execute on function inv_puede_crear_empresa() to authenticated;
 revoke execute on function inv_agregar_miembro(uuid, text, text) from public, anon;
 revoke execute on function inv_reiniciar_stock(uuid, boolean) from public, anon;
 grant execute on function inv_mover_stock(uuid, text, numeric, text) to authenticated;

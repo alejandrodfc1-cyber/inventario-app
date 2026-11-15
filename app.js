@@ -10,7 +10,7 @@ const app = $('#app');
 const S = { user: null, perfil: null, emp: null, empresas: [], cats: [], provs: [], prods: [], q: '' };
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
-const VERSION = '2026-11-14.11';
+const VERSION = '2026-11-15.1';
 const negocio = () => S.emp?.nombre || CFG.negocio || '';
 const isAdmin = () => S.perfil?.rol === 'admin';
 const canEdit = () => ['admin', 'bodega'].includes(S.perfil?.rol);
@@ -227,11 +227,22 @@ async function viewUsers() {
 }
 
 /* ---------- empresas y ajustes ---------- */
-function viewOnboard() {
+async function viewOnboard() {
+  let puede = false;
+  try { const r = await sb.rpc('inv_puede_crear_empresa'); puede = r.data === true; } catch (e) { /* sin permiso */ }
+  if (!puede) {
+    app.innerHTML = `<div class="login"><h1>👋 Cuenta creada</h1>
+      <p class="center mut">Todavía no perteneces a ninguna empresa.</p>
+      <p class="center">Pídele al administrador que te agregue con este correo:</p>
+      <p class="center"><b>${esc(S.user.email)}</b></p>
+      <p class="center mut" style="font-size:13px">Cuando te agregue, toca «Revisar de nuevo».</p>
+      <p class="center"><button class="btn full" onclick="location.reload()">Revisar de nuevo</button></p>
+      <p class="center"><button class="btn sec sm" data-act="logout">Cerrar sesión</button></p></div>`;
+    return;
+  }
   app.innerHTML = `<div class="login"><h1>🏢 Bienvenido</h1><p class="center mut">Crea tu empresa para empezar. Tú serás el administrador.</p>
     <form id="fe"><label>Nombre de la empresa</label><input name="nombre" required maxlength="60" placeholder="Ej. Bar La Esquina" autofocus>
     <p><button class="btn full">Crear empresa</button></p></form>
-    <p class="center mut" style="font-size:13px">¿Te invitaron a una empresa? Pídele al administrador que te agregue con el correo <b>${esc(S.user.email)}</b> y vuelve a abrir la app.</p>
     <p class="center"><button class="btn sec sm" data-act="logout">Cerrar sesión</button></p></div>`;
   $('#fe').onsubmit = async e => { e.preventDefault(); const b = $('button', e.target); b.disabled = true; try { await crearEmpresa(new FormData(e.target).get('nombre')); } catch (er) { fail(er); b.disabled = false; } };
 }

@@ -39,6 +39,7 @@ function localClient() {
   const sess = d => { const u = d.users.find(x => x.id === d.session); return u ? { user: { id: u.id, email: u.email } } : null; };
   const emit = ev => { const s = sess(load()); listeners.forEach(f => f(ev, s)); };
   const roleIn = (d, e) => d.t.inv_miembros.find(m => m.empresa_id === e && m.user_id === d.session)?.rol || null;
+  const puedeCrear = d => !!d.session && (d.t.inv_miembros.some(m => m.user_id === d.session && m.rol === 'admin') || !d.t.inv_empresas.length);
   const canWrite = (d, t, e) => { const r = roleIn(d, e); return t === 'inv_categorias' || t === 'inv_empresas' || t === 'inv_miembros' ? r === 'admin' : r === 'admin' || r === 'bodega'; };
   // Equivale a las reglas RLS: solo se ve lo de las empresas a las que perteneces
   const visible = (d, t, r) => t === 'inv_perfiles' ? r.id === d.session : t === 'inv_empresas' ? !!roleIn(d, r.id) : !!roleIn(d, r.empresa_id);
@@ -135,11 +136,11 @@ function localClient() {
       if (a.p_borrar_historial) d.t.inv_movimientos = d.t.inv_movimientos.filter(m => m.empresa_id !== a.p_empresa);
       return { data: null, error: null };
     },
+    inv_puede_crear_empresa(d) { return { data: puedeCrear(d), error: null }; },
     inv_crear_empresa(d, a) {
       if (!d.session) return err('Sin sesion');
       if (!(a.p_nombre || '').trim()) return err('Escribe el nombre de la empresa');
-      const mias = d.t.inv_miembros.filter(m => m.user_id === d.session);
-      if (mias.length && !mias.some(m => m.rol === 'admin')) return err('Solo un administrador puede crear otra empresa');
+      if (!puedeCrear(d)) return err('Solo un administrador puede crear empresas. Pídele que te agregue a la suya.');
       const e = { id: uid(), nombre: a.p_nombre.trim(), creada_por: d.session, created_at: now() };
       d.t.inv_empresas.push(e);
       d.t.inv_miembros.push({ empresa_id: e.id, user_id: d.session, email: d.users.find(u => u.id === d.session)?.email, rol: 'admin', created_at: now() });
