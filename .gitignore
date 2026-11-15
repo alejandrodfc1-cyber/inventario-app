@@ -4,3 +4,6 @@ iniciar-servidor.bat
 
 # Fotos de facturas: privadas, nunca se suben a GitHub
 Facturas/
+
+# Resumenes de compras y costos: privados, nunca se suben a GitHub
+Resumen/
