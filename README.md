@@ -11,7 +11,7 @@ Mientras `config.js` tenga los valores de ejemplo, la app funciona sola: los dat
 ## Puesta en marcha con Supabase
 1. Crea un proyecto **nuevo** (no el de COMANDA / Caja Ramada). En *SQL Editor* pega y ejecuta `schema.sql` completo (se puede volver a ejecutar sin problema).
 2. *Authentication > Providers > Email*: desactiva "Confirm email" para que las cuentas entren al tiro.
-3. *Project Settings > API Keys*: copia la **Project URL** y la clave **anon (legacy, empieza con `eyJ`)** a `config.js`. Esta clave es pública por diseño; la seguridad la dan las reglas del `schema.sql`. Nunca pongas la `service_role`.
+3. *Project Settings > API Keys*: copia la **Project URL** y la clave **publishable** (`sb_publishable_…`) a `config.js`. Esta clave es pública por diseño; la seguridad la dan las reglas del `schema.sql`. **Nunca** pongas la clave `secret` (`sb_secret_…`) ni la `service_role`. (Las claves "legacy" `anon` dejarán de funcionar a inicios de 2027.)
 4. Publica en **GitHub Pages**: sube la carpeta a un repo y activa *Settings > Pages > Deploy from branch > main / root*. La app queda en `https://USUARIO.github.io/REPO/`. En HTTPS se puede **instalar** en el teléfono (menú del navegador > "Agregar a pantalla de inicio" / "Instalar app") con su ícono.
 5. Tras publicar, en Supabase *Authentication > URL Configuration* pon esa dirección como **Site URL**.
 
