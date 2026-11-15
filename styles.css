@@ -205,7 +205,9 @@ body{background:#fff;color:#000;padding:0}.wrap{padding:0}.grp,.row{break-inside
 .pill.over{background:color-mix(in srgb,#6366f1 18%,transparent);color:#6366f1}
 .bar i.over{background:#6366f1}
 .cnt{background:var(--card);border:1px solid var(--br);border-radius:var(--r);padding:10px 12px;margin-bottom:8px}
-.cnt .cin{display:flex;gap:10px;margin-top:6px}.cnt .cin>div{flex:1}
+.cnt .mid b,.cnt .mid small{display:block}
+.cnt .mid small{margin-top:1px;font-size:13px}
+.cnt .cin{display:flex;gap:10px;margin-top:8px}.cnt .cin>div{flex:1}
 .cnt label{margin:0 0 2px;font-size:12px}
 .cnt input{padding:8px 10px;text-align:center;font-weight:600}
 .cdelta{min-height:20px;margin-top:6px;font-size:14px}

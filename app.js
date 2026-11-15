@@ -10,7 +10,7 @@ const app = $('#app');
 const S = { user: null, perfil: null, emp: null, empresas: [], cats: [], provs: [], prods: [], q: '' };
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
-const VERSION = '2026-11-14.10';
+const VERSION = '2026-11-14.11';
 const negocio = () => S.emp?.nombre || CFG.negocio || '';
 const isAdmin = () => S.perfil?.rol === 'admin';
 const canEdit = () => ['admin', 'bodega'].includes(S.perfil?.rol);
@@ -532,6 +532,7 @@ function viewConteo() {
   if (!C.manual) C.modo = S.prods.every(p => !p.stock) ? 'Inventario inicial' : 'Ajuste por conteo';
   shell('Inventario inicial', `<p class="mut" style="margin-top:0">Anota lo que hay físicamente en bodega. Los campos vacíos no cambian: solo se guardan los productos que escribas.</p>
     <div class="seg"><button data-act="cmodo" data-m="Inventario inicial" class="${C.modo === 'Inventario inicial' ? 'on in' : ''}">Inventario inicial</button><button data-act="cmodo" data-m="Ajuste por conteo" class="${C.modo === 'Ajuste por conteo' ? 'on in' : ''}">Ajuste por conteo</button></div>
+    <p class="mut" style="font-size:13px;margin:-2px 2px 12px">${C.modo === 'Inventario inicial' ? 'Para cargar lo que hay por primera vez.' : 'Para corregir diferencias después de un recuento.'} Los dos calculan igual: solo cambia la nota <b>«${C.modo}»</b> que queda en el historial.</p>
     <input class="search" id="cq" type="search" placeholder="🔍 Buscar producto…" value="${esc(C.q)}" autocomplete="off">
     <div id="clist"></div><div style="height:80px"></div><div id="cbar"></div>`, { back: '#/mas' });
   $('#cq').oninput = e => { C.q = e.target.value; paintConteo(); };
