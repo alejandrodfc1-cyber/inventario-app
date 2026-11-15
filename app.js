@@ -10,7 +10,7 @@ const app = $('#app');
 const S = { user: null, perfil: null, emp: null, empresas: [], cats: [], provs: [], prods: [], q: '' };
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
-const VERSION = '2026-11-15.1';
+const VERSION = '2026-11-15.2';
 const negocio = () => S.emp?.nombre || CFG.negocio || '';
 const isAdmin = () => S.perfil?.rol === 'admin';
 const canEdit = () => ['admin', 'bodega'].includes(S.perfil?.rol);
@@ -107,7 +107,7 @@ function loginView(modo = 'in') {
   <label>Contraseña</label><input type="password" name="pass" required minlength="6" autocomplete="${modo === 'in' ? 'current-password' : 'new-password'}">
   <p><button class="btn full">${modo === 'in' ? 'Entrar' : 'Crear cuenta'}</button></p></form>
   <p class="center"><a href="#" id="sw">${modo === 'in' ? 'Crear una cuenta' : 'Ya tengo cuenta'}</a></p>
-  <p class="center mut" style="font-size:13px">${modo === 'in' ? '' : 'Luego podrás crear tu empresa, o pedirle a un administrador que te agregue con este correo.'}</p>
+  <p class="center mut" style="font-size:13px">${modo === 'in' ? '' : 'Después de crear tu cuenta, pídele al administrador que te agregue con este correo.'}</p>
   ${LOCAL ? '<p class="center mut" style="font-size:12px">🧪 Modo local: los datos quedan solo en este navegador.</p>' : ''}</div>`;
   $('#sw').onclick = e => { e.preventDefault(); loginView(modo === 'in' ? 'up' : 'in'); };
   $('#lf').onsubmit = async e => {

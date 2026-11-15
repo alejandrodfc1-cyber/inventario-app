@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Hoja para nuevos usuarios</title>
+<style>
+  /* Una hoja A4 para entregar o pegar: pasos numerados porque unirse a la empresa es una secuencia real.
+     Los botones dibujados copian los colores y textos de la app para que se reconozcan al tocarlos. */
+  :root {
+    --bg: #f3f6f6;
+    --hoja: #ffffff;
+    --tinta: #1b2a2e;
+    --suave: #56676b;
+    --linea: #d5dedf;
+    --acento: #0f766e;
+    --rojo: #dc2626;
+    --verde: #16a34a;
+    --aviso-bg: #ecfdf5;
+    --aviso-borde: #7cc9b0;
+    --fuente: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101a1c; --hoja: #17252a; --tinta: #eaf2f2; --suave: #9db1b4; --linea: #2d4247;
+      --acento: #2dd4bf; --aviso-bg: #12302c; --aviso-borde: #2f7f72; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101a1c; --hoja: #17252a; --tinta: #eaf2f2; --suave: #9db1b4; --linea: #2d4247;
+    --acento: #2dd4bf; --aviso-bg: #12302c; --aviso-borde: #2f7f72; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--tinta); font-family: var(--fuente); font-size: 16px; line-height: 1.45; margin: 0;
+    padding-block: 20px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .hoja {
+    max-width: 820px; margin: 0 auto; background: var(--hoja); border: 1px solid var(--linea); border-radius: 6px;
+    padding: 34px 38px 30px; display: flex; flex-direction: column; gap: 26px;
+  }
+  header { display: flex; flex-direction: column; gap: 4px; border-bottom: 3px solid var(--acento); padding-bottom: 14px; }
+  .local { font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--acento); font-size: .9rem; }
+  h1 { font-weight: 800; font-size: clamp(1.7rem, 6vw, 2.5rem); line-height: 1.08; margin: 0; text-wrap: balance; }
+  .sub { color: var(--suave); margin: 4px 0 0; font-size: 1.02rem; }
+
+  .pasos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 28px; margin: 0; padding: 0; list-style: none; }
+  .paso { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 4px 14px; align-items: start; }
+  .num { font-weight: 800; font-size: 2.9rem; line-height: .9; color: var(--acento); grid-row: span 3; text-align: center; }
+  .paso h2 { font-weight: 800; font-size: 1.18rem; line-height: 1.15; margin: 0; text-wrap: balance; }
+  .paso p { margin: 0; }
+  .paso .muted { color: var(--suave); font-size: .92rem; }
+  .btn {
+    display: inline-block; font-weight: 700; font-size: .92rem; color: #fff; background: var(--acento);
+    border-radius: 10px; padding: 6px 12px; white-space: nowrap; margin-top: 4px;
+  }
+  .btn.gris { background: #64748b; }
+  .url { display: inline-block; font-family: ui-monospace, Consolas, monospace; font-size: .86rem; background: var(--bg); border: 1px solid var(--linea); border-radius: 6px; padding: 3px 8px; word-break: break-all; }
+  .campo { display: inline-block; border: 1px solid var(--linea); background: var(--bg); border-radius: 6px; padding: 3px 10px; font-size: .9rem; color: var(--suave); }
+
+  .recuadros { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .caja { border: 1px solid var(--linea); border-radius: 6px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .caja.aviso { background: var(--aviso-bg); border-color: var(--aviso-borde); }
+  .caja h3 { font-weight: 800; font-size: 1rem; letter-spacing: .04em; text-transform: uppercase; margin: 0; }
+  .caja ul { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 4px; }
+  .caja li::marker { color: var(--acento); }
+  footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--suave); font-size: .92rem; border-top: 1px solid var(--linea); padding-top: 12px; }
+
+  @media (max-width: 640px) {
+    .hoja { padding: 22px 18px 20px; gap: 22px; }
+    .pasos, .recuadros { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media print {
+    @page { size: A4; margin: 10mm; }
+    :root { --bg: #fff; --hoja: #fff; }
+    body { padding: 0; font-size: 14.5px; }
+    .hoja { border: none; max-width: none; padding: 0; gap: 18px; }
+    .pasos { gap: 16px 26px; }
+  }
+</style>
+</head>
+<body>
+<main class="hoja">
+  <header>
+    <span class="local">La Españita</span>
+    <h1>Cómo entrar a la app de Inventario</h1>
+    <p class="sub">Seis pasos para unirte a la empresa. Solo se hacen una vez.</p>
+  </header>
+
+  <ol class="pasos">
+    <li class="paso">
+      <span class="num">1</span>
+      <h2>Abre el enlace</h2>
+      <p>Escribe esta dirección en el navegador del celular:</p>
+      <p><span class="url">alejandrodfc1-cyber.github.io/inventario-app</span></p>
+      <p class="muted">Úsalo siempre desde ahí. Puedes guardarlo como icono (paso 6).</p>
+    </li>
+    <li class="paso">
+      <span class="num">2</span>
+      <h2>Crea tu cuenta</h2>
+      <p>Toca <b>Crear una cuenta</b>. Escribe tu correo y una contraseña de al menos 6 caracteres.</p>
+      <p><span class="btn">Crear cuenta</span></p>
+      <p class="muted">Usa un correo que revises. No compartas tu contraseña.</p>
+    </li>
+    <li class="paso">
+      <span class="num">3</span>
+      <h2>Avísale al administrador</h2>
+      <p>Verás «Cuenta creada». Ahí aparece tu correo. <b>Envíaselo</b> al administrador por WhatsApp.</p>
+      <p class="muted">Sin esto no puedes ver nada: la empresa solo muestra sus datos a quien el administrador agrega.</p>
+    </li>
+    <li class="paso">
+      <span class="num">4</span>
+      <h2>El administrador te agrega</h2>
+      <p>Él va a <b>Más → Usuarios</b>, escribe tu correo y elige tu rol.</p>
+      <p class="muted">Solo es posible después de que hayas hecho el paso 2.</p>
+    </li>
+    <li class="paso">
+      <span class="num">5</span>
+      <h2>Revisa de nuevo</h2>
+      <p>Cuando te avise que ya estás, toca:</p>
+      <p><span class="btn">Revisar de nuevo</span></p>
+      <p class="muted">Si no cambia, cierra la sesión y entra otra vez con tu correo.</p>
+    </li>
+    <li class="paso">
+      <span class="num">6</span>
+      <h2>Ponla en tu pantalla</h2>
+      <p><b>Android:</b> menú ⋮ del navegador → «Instalar app» o «Añadir a pantalla de inicio».</p>
+      <p><b>iPhone:</b> botón Compartir → «Añadir a pantalla de inicio».</p>
+      <p class="muted">Así se abre como cualquier otra app.</p>
+    </li>
+  </ol>
+
+  <div class="recuadros">
+    <section class="caja">
+      <h3>Qué puedes hacer según tu rol</h3>
+      <ul>
+        <li><b>Administrador:</b> todo, incluidos usuarios y ajustes.</li>
+        <li><b>Bodega:</b> registrar ingresos y salidas, productos y pedidos.</li>
+        <li><b>Solo lectura:</b> ver el stock, sin cambiar nada.</li>
+      </ul>
+    </section>
+    <section class="caja aviso">
+      <h3>Para acordarte</h3>
+      <ul>
+        <li>Cada persona usa su propio correo. No prestes tu cuenta.</li>
+        <li>Si la app dice «Cuenta creada», no es un error: falta que te agreguen.</li>
+        <li>Anota tu contraseña en un lugar seguro: la app aún no tiene «Olvidé mi contraseña».</li>
+      </ul>
+    </section>
+  </div>
+
+  <footer>
+    <span>Dudas: pregunta al administrador.</span>
+  </footer>
+</main>
+</body>
+</html>
