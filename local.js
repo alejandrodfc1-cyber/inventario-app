@@ -130,6 +130,19 @@ function localClient() {
       d.t.inv_movimientos.push({ id: d.t.inv_movimientos.length + 1 + Date.now(), empresa_id: p.empresa_id, producto_id: p.id, tipo: a.p_tipo, cantidad: a.p_cantidad, stock_resultante: p.stock, nota: a.p_nota || null, usuario_id: d.session, usuario_email: d.users.find(u => u.id === d.session)?.email, created_at: now() });
       return { data: p.stock, error: null };
     },
+    inv_anular_movimiento(d, a) {
+      const m = d.t.inv_movimientos.find(x => x.id === a.p_mov);
+      if (!m) return err('La operación no existe');
+      if (roleIn(d, m.empresa_id) !== 'admin') return err('Solo el administrador puede anular operaciones');
+      if (m.anulado) return err('Esa operación ya fue anulada');
+      if (m.anula_a != null) return err('Una anulación no se puede anular');
+      const p = d.t.inv_productos.find(x => x.id === m.producto_id), t = m.tipo === 'ingreso' ? 'salida' : 'ingreso';
+      if (t === 'salida' && p.stock < m.cantidad) return err(`No se puede anular: el stock actual (${p.stock}) es menor que lo que ingresó esa operación (${m.cantidad}). Primero ajusta con un conteo.`);
+      p.stock += t === 'ingreso' ? m.cantidad : -m.cantidad;
+      d.t.inv_movimientos.push({ id: d.t.inv_movimientos.length + 1 + Date.now(), empresa_id: m.empresa_id, producto_id: m.producto_id, tipo: t, cantidad: m.cantidad, stock_resultante: p.stock, nota: 'Anula operación #' + m.id + (String(a.p_motivo || '').trim() ? ' - ' + String(a.p_motivo).trim() : ''), usuario_id: d.session, usuario_email: d.users.find(u => u.id === d.session)?.email, created_at: now(), anula_a: m.id });
+      m.anulado = true;
+      return { data: p.stock, error: null };
+    },
     inv_reiniciar_stock(d, a) {
       if (roleIn(d, a.p_empresa) !== 'admin') return err('Solo el administrador puede reiniciar las cantidades');
       d.t.inv_productos.forEach(p => { if (p.empresa_id === a.p_empresa) p.stock = 0; });

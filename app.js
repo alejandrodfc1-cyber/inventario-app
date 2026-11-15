@@ -10,7 +10,7 @@ const app = $('#app');
 const S = { user: null, perfil: null, emp: null, empresas: [], cats: [], provs: [], prods: [], q: '' };
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
-const VERSION = '2026-11-15.2';
+const VERSION = '2026-11-15.3';
 const negocio = () => S.emp?.nombre || CFG.negocio || '';
 const isAdmin = () => S.perfil?.rol === 'admin';
 const canEdit = () => ['admin', 'bodega'].includes(S.perfil?.rol);
@@ -200,12 +200,17 @@ function viewProv() {
   shell('Proveedores', body, { fab: canEdit() ? 'newprov' : '' });
 }
 
+let H = []; // movimientos que se ven en el Historial (para Anular)
 async function viewHist() {
   shell('Historial', '<p class="center mut">Cargando…</p>');
   const { data, error } = await sb.from('inv_movimientos').select('*, inv_productos(nombre)').eq('empresa_id', S.emp.id).order('created_at', { ascending: false }).limit(150);
   if (error) return fail(error);
-  shell('Historial', data.length ? data.map(m => `<div class="hist"><div><b>${esc(m.inv_productos?.nombre || '—')}</b><br><small class="mut">${new Date(m.created_at).toLocaleString('es-CL')} · ${esc(m.usuario_email || '')}${m.nota ? ' · ' + esc(m.nota) : ''}</small></div>
-    <div class="center"><span class="${m.tipo === 'ingreso' ? 'in-c' : 'out-c'}">${m.tipo === 'ingreso' ? '+' : '−'}${num(m.cantidad)}</span><br><small class="mut">= ${num(m.stock_resultante)}</small></div></div>`).join('') : '<p class="center mut">Sin movimientos</p>');
+  H = data;
+  shell('Historial', data.length ? data.map(m => {
+    const anul = !!m.anulado, rev = m.anula_a != null;
+    return `<div class="hist" style="${anul ? 'opacity:.6' : ''}"><div><b style="${anul ? 'text-decoration:line-through' : ''}">${esc(m.inv_productos?.nombre || '—')}</b>${anul ? ' <span class="pill out">Anulada</span>' : ''}${rev ? ' <span class="pill low">Anulación</span>' : ''}<br><small class="mut">${new Date(m.created_at).toLocaleString('es-CL')} · ${esc(m.usuario_email || '')}${m.nota ? ' · ' + esc(m.nota) : ''}</small></div>
+    <div class="center"><span class="${m.tipo === 'ingreso' ? 'in-c' : 'out-c'}">${m.tipo === 'ingreso' ? '+' : '−'}${num(m.cantidad)}</span><br><small class="mut">= ${num(m.stock_resultante)}</small>${isAdmin() && !anul && !rev ? `<br><button class="btn sec sm" style="margin-top:4px" data-act="anular" data-id="${m.id}">Anular</button>` : ''}</div></div>`;
+  }).join('') : '<p class="center mut">Sin movimientos</p>');
 }
 
 async function viewUsers() {
@@ -355,6 +360,37 @@ function review() {
   paintLines();
 }
 
+const hace = m => m < 1 ? 'hace menos de 1 min' : `hace ${m} min`;
+// Avisa si el mismo producto ya tuvo una operacion del mismo tipo hace poco (posible duplicado). Devuelve {producto_id: minutos}
+async function recentDup(ids, tipo, mins = 30) {
+  try {
+    const { data } = await sb.from('inv_movimientos').select('*').eq('empresa_id', S.emp.id).order('created_at', { ascending: false }).limit(80);
+    const out = {}, lim = Date.now() - mins * 60000;
+    (data || []).forEach(m => {
+      const t = new Date(m.created_at).getTime();
+      if (m.tipo === tipo && !m.anulado && m.anula_a == null && ids.includes(m.producto_id) && t >= lim && out[m.producto_id] === undefined) out[m.producto_id] = Math.max(0, Math.round((Date.now() - t) / 60000));
+    });
+    return out;
+  } catch (e) { return {}; }
+}
+
+// Confirmacion antes de registrar una compra / salida de varios productos (con aviso de duplicado)
+async function confirmMove() {
+  const c = M.modo === 'compra', L = M.lines.filter(l => l.qty > 0), f = $('#mfoot');
+  if (!L.length) return toast('Ingresa cantidades mayores a 0');
+  if (!f) return;
+  const dup = await recentDup(L.map(l => l.id), c ? 'ingreso' : 'salida');
+  const li = L.map(l => {
+    const p = prodOf(l.id), q = l.qty * (l.unit === 'emp' ? upeOf(p) : 1);
+    return `<li><b>${num(l.qty)} ${l.unit === 'emp' ? esc(p.empaque.toLowerCase()) : 'un'}</b> · ${esc(p.nombre)} <span class="mut">(${c ? '+' : '−'}${num(q)} un)</span>${dup[l.id] !== undefined ? `<br><span style="color:var(--warn)">⚠️ Ya hay ${c ? 'un ingreso' : 'una salida'} de este producto ${hace(dup[l.id])}. ¿No será duplicado?</span>` : ''}</li>`;
+  }).join('');
+  const tot = L.reduce((a, l) => a + (l.qty || 0) * (l.costo || 0), 0);
+  f.innerHTML = `<div style="border:2px solid var(--pri,#0f766e);border-radius:12px;padding:12px;margin-top:8px"><p style="margin:0"><b>¿Confirmas ${c ? 'esta compra' : 'esta salida'}?</b></p>
+    <ul style="margin:6px 0 8px;padding-left:1.2em;font-size:14px">${li}</ul>${c && canCost() ? `<p class="center" style="margin:0 0 8px"><b>Total compra: ${money(tot)}</b></p>` : ''}
+    <button class="btn full ${c ? '' : 'bad'}" data-act="submitmove">Sí, registrar (${L.length})</button><p style="margin:8px 0 0"><button class="btn sec full" data-act="backfoot">Volver a revisar</button></p></div>`;
+  f.scrollIntoView({ block: 'nearest' });
+}
+
 // Panel rapido de un solo producto (desde la categoria): Ingreso / Salida en 2 toques
 function quickMove(id) {
   const p = prodOf(id); if (!p) return;
@@ -366,9 +402,10 @@ function quickMove(id) {
     ${u > 1 ? '<p style="margin:-2px 0 8px;text-align:right"><button class="btn sec sm" id="pin" type="button" style="display:none"></button></p>' : ''}
     <div class="chips">${[1, 2, 3, 5, 10, 20].map(n => `<button class="chip" data-n="${n}">${n}</button>`).join('')}</div>
     <div class="step"><button id="m">−</button><input id="cant" type="number" inputmode="decimal" min="0" step="any" value="1"><button id="pl">+</button></div>
-    <p><button class="btn full bad" id="ok">Registrar salida</button></p>
+    <p><button class="btn full bad" id="ok">Registrar salida</button></p><div id="cfm"></div>
     <div class="two"><button class="btn sec" id="det">Detalle / editar</button><button class="btn sec" data-act="closemodal">Cerrar</button></div>`);
   const ci = $('#cant', s);
+  const resetCfm = () => { $('#cfm', s).innerHTML = ''; $('#ok', s).style.display = ''; }; // si cambias algo, se vuelve a pedir confirmación
   // Boton "Salir siempre en ...": aparece si en una salida eliges una unidad distinta a la regla; la guarda en el producto
   const paintU = () => {
     if (u > 1) {
@@ -383,26 +420,37 @@ function quickMove(id) {
     await loadAll(); toast(`✓ ${p.nombre} saldrá siempre en ${st.unit === 'emp' ? p.empaque.toLowerCase() : 'unidades'}`); quickMove(id);
   });
   const setT = t => {
+    resetCfm();
     st.tipo = t; st.unit = t === 'ingreso' ? (u > 1 ? 'emp' : 'un') : unidadSalida(p); // ingreso -> cajas; salida -> segun categoria/producto (por defecto unidades)
     s.querySelectorAll('[data-t]').forEach(b => b.className = (b.dataset.t === t ? 'on ' : '') + (b.dataset.t === 'ingreso' ? 'in' : 'out'));
     $('#ok', s).textContent = t === 'ingreso' ? 'Registrar ingreso' : 'Registrar salida'; $('#ok', s).classList.toggle('bad', t === 'salida'); paintU();
   };
   paintU();
   s.querySelectorAll('[data-t]').forEach(b => b.onclick = () => setT(b.dataset.t));
-  s.querySelectorAll('[data-u]').forEach(b => b.onclick = () => { st.unit = b.dataset.u; paintU(); });
-  s.querySelectorAll('[data-n]').forEach(b => b.onclick = () => ci.value = b.dataset.n);
-  $('#m', s).onclick = () => ci.value = Math.max(0, (Number(ci.value) || 0) - 1);
-  $('#pl', s).onclick = () => ci.value = (Number(ci.value) || 0) + 1;
+  s.querySelectorAll('[data-u]').forEach(b => b.onclick = () => { resetCfm(); st.unit = b.dataset.u; paintU(); });
+  s.querySelectorAll('[data-n]').forEach(b => b.onclick = () => { resetCfm(); ci.value = b.dataset.n; });
+  $('#m', s).onclick = () => { resetCfm(); ci.value = Math.max(0, (Number(ci.value) || 0) - 1); };
+  $('#pl', s).onclick = () => { resetCfm(); ci.value = (Number(ci.value) || 0) + 1; };
+  ci.addEventListener('input', resetCfm);
   $('#det', s).onclick = () => openProd(id);
+  // Primer toque: pide confirmación (con aviso si parece duplicado). Segundo toque: registra.
   $('#ok', s).onclick = async e => {
-    const q = (Number(ci.value) || 0) * (st.unit === 'emp' ? u : 1);
+    const n = Number(ci.value) || 0, q = n * (st.unit === 'emp' ? u : 1);
     if (q <= 0) return toast('Ingresa una cantidad');
-    e.target.disabled = true;
-    const { error } = await sb.rpc('inv_mover_stock', { p_producto: id, p_tipo: st.tipo, p_cantidad: q, p_nota: 'Rápido' });
-    e.target.disabled = false;
-    if (error) return fail(error);
-    toast(`${st.tipo === 'ingreso' ? '＋' : '－'}${num(q)} un · ${p.nombre}`);
-    await loadAll(); closeModal(); render();
+    const ing = st.tipo === 'ingreso', btn = e.target, box = $('#cfm', s);
+    btn.disabled = true; const dup = (await recentDup([id], st.tipo))[id]; btn.disabled = false;
+    btn.style.display = 'none';
+    box.innerHTML = `<div style="border:2px solid var(--pri,#0f766e);border-radius:12px;padding:12px;margin-bottom:10px"><p style="margin:0 0 6px"><b>¿Confirmas?</b> Vas a ${ing ? 'ingresar' : 'sacar'} <b>${num(n)} ${st.unit === 'emp' ? esc(p.empaque.toLowerCase()) : 'un'}</b> de ${esc(p.nombre)} <span class="mut">(${ing ? '+' : '−'}${num(q)} un)</span>.</p>
+      ${dup !== undefined ? `<p style="margin:0 0 8px;color:var(--warn)">⚠️ Ya registraste ${ing ? 'un ingreso' : 'una salida'} de este producto ${hace(dup)}. ¿No será duplicado?</p>` : ''}
+      <div class="two"><button class="btn ${ing ? '' : 'bad'}" id="cok">Sí, registrar</button><button class="btn sec" id="cno">Volver</button></div></div>`;
+    $('#cno', s).onclick = resetCfm;
+    $('#cok', s).onclick = async ev => {
+      ev.target.disabled = true;
+      const { error } = await sb.rpc('inv_mover_stock', { p_producto: id, p_tipo: st.tipo, p_cantidad: q, p_nota: 'Rápido' });
+      if (error) { ev.target.disabled = false; return fail(error); }
+      toast(`${ing ? '＋' : '－'}${num(q)} un · ${p.nombre}`);
+      await loadAll(); closeModal(); render();
+    };
   };
 }
 
@@ -428,7 +476,7 @@ function paintLines() {
 function paintFoot() {
   const c = M.modo === 'compra', f = $('#mfoot'); if (!f) return;
   const tot = M.lines.reduce((a, l) => a + (l.qty || 0) * (l.costo || 0), 0);
-  f.innerHTML = M.lines.length ? `${c && canCost() ? `<p class="center"><b>Total compra: ${money(tot)}</b></p>` : ''}<button class="btn full ${c ? '' : 'bad'}" data-act="submitmove">${c ? 'Registrar compra' : 'Registrar salida'} (${M.lines.length})</button>` : '';
+  f.innerHTML = M.lines.length ? `${c && canCost() ? `<p class="center"><b>Total compra: ${money(tot)}</b></p>` : ''}<button class="btn full ${c ? '' : 'bad'}" data-act="confirmmove">${c ? 'Registrar compra' : 'Registrar salida'} (${M.lines.length})</button>` : '';
 }
 async function submitMove(btn) {
   const c = M.modo === 'compra', L = M.lines.filter(l => l.qty > 0);
@@ -895,7 +943,24 @@ const actions = {
   },
   mode: d => { if (M.modo !== d.m) { M.modo = d.m; M.lines = []; } viewMove(); },
   rmline: d => { M.lines.splice(+d.i, 1); M.lines.length ? paintLines() : closeModal(); },
-  submitmove: (d, el) => submitMove(el)
+  confirmmove: () => confirmMove(),
+  backfoot: () => paintFoot(),
+  submitmove: (d, el) => submitMove(el),
+  anular: d => {
+    const m = H.find(x => String(x.id) === String(d.id)); if (!m) return;
+    const ing = m.tipo === 'ingreso', nom = m.inv_productos?.nombre || 'producto';
+    const s = modal(`<h2>↩️ Anular operación</h2><p style="margin:0 0 6px"><b>${esc(nom)}</b>: ${ing ? '+' : '−'}${num(m.cantidad)} un<br><small class="mut">${new Date(m.created_at).toLocaleString('es-CL')}${m.nota ? ' · ' + esc(m.nota) : ''}</small></p>
+      <p>Se registrará la operación contraria (<b>${ing ? '−' : '+'}${num(m.cantidad)} un</b>) y esta quedará marcada como <b>anulada</b>. No se borra nada del historial.</p>
+      ${ing ? '<p class="mut" style="font-size:13px">El costo del producto no se revierte: queda el último que registraste.</p>' : ''}
+      <label>Motivo (opcional)</label><input id="amot" placeholder="Ej. registrada dos veces por error">
+      <button class="btn bad full" id="ago" style="margin-top:10px">Sí, anular</button><p><button class="btn sec full" data-act="closemodal">Cancelar</button></p>`);
+    $('#ago', s).onclick = async e => {
+      e.target.disabled = true;
+      const { error } = await sb.rpc('inv_anular_movimiento', { p_mov: m.id, p_motivo: $('#amot', s).value });
+      if (error) { e.target.disabled = false; return fail(error); }
+      await loadAll(); closeModal(); toast('✓ Operación anulada'); viewHist();
+    };
+  }
 };
 document.addEventListener('input', e => {
   if (e.target.dataset.qty !== undefined) { updPO(e.target.closest('.po')); return; } // pedido a proveedor

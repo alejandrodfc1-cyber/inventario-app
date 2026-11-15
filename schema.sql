@@ -167,6 +167,35 @@ begin
   return s;
 end $$;
 
+-- Anular una operacion: no se borra nada; se registra la operacion contraria y la original queda marcada como anulada.
+alter table inv_movimientos add column if not exists anulado boolean not null default false;
+alter table inv_movimientos add column if not exists anula_a bigint references inv_movimientos(id) on delete set null;
+
+create or replace function inv_anular_movimiento(p_mov bigint, p_motivo text default null) returns numeric
+language plpgsql security definer set search_path = public as $$
+declare m inv_movimientos%rowtype; s numeric; em text; t text;
+begin
+  select * into m from inv_movimientos where id = p_mov for update;
+  if not found then raise exception 'La operacion no existe'; end if;
+  if inv_rol(m.empresa_id) is distinct from 'admin' then raise exception 'Solo el administrador puede anular operaciones'; end if;
+  if m.anulado then raise exception 'Esa operacion ya fue anulada'; end if;
+  if m.anula_a is not null then raise exception 'Una anulacion no se puede anular'; end if;
+  select stock into s from inv_productos where id = m.producto_id for update;
+  t := case when m.tipo = 'ingreso' then 'salida' else 'ingreso' end;
+  if t = 'salida' and s < m.cantidad then
+    raise exception 'No se puede anular: el stock actual (%) es menor que lo que ingreso esa operacion (%). Primero ajusta con un conteo.', s, m.cantidad;
+  end if;
+  s := case when t = 'ingreso' then s + m.cantidad else s - m.cantidad end;
+  perform set_config('inv.mov', '1', true);
+  update inv_productos set stock = s where id = m.producto_id;
+  select email into em from inv_perfiles where id = auth.uid();
+  insert into inv_movimientos(empresa_id, producto_id, tipo, cantidad, stock_resultante, nota, usuario_id, usuario_email, anula_a)
+  values (m.empresa_id, m.producto_id, t, m.cantidad, s,
+          'Anula operacion #' || m.id || coalesce(' - ' || nullif(trim(p_motivo), ''), ''), auth.uid(), em, m.id);
+  update inv_movimientos set anulado = true where id = m.id;
+  return s;
+end $$;
+
 -- Prueba en limpio: pone el stock en 0 (y opcionalmente borra el historial). Solo admin de esa empresa.
 create or replace function inv_reiniciar_stock(p_empresa uuid, p_borrar_historial boolean default true) returns void
 language plpgsql security definer set search_path = public as $$
@@ -260,6 +289,8 @@ create policy img_del on storage.objects for delete to authenticated
 
 -- Las funciones que modifican datos solo las puede llamar un usuario con sesion (no el publico anonimo)
 revoke execute on function inv_mover_stock(uuid, text, numeric, text) from public, anon;
+revoke execute on function inv_anular_movimiento(bigint, text) from public, anon;
+grant execute on function inv_anular_movimiento(bigint, text) to authenticated;
 revoke execute on function inv_crear_empresa(text) from public, anon;
 revoke execute on function inv_puede_crear_empresa() from public, anon;
 grant execute on function inv_puede_crear_empresa() to authenticated;
