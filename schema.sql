@@ -65,6 +65,7 @@ create table if not exists inv_productos (
   unidad_capacidad text,
   unidad_salida text check (unidad_salida in ('un','emp')),  -- null = segun la categoria
   stock numeric not null default 0,               -- siempre en unidades
+  orden int not null default 0,                   -- orden manual dentro de la categoria (0 = por nombre)
   stock_minimo numeric not null default 0,
   stock_maximo numeric not null default 0,        -- 0 = sin maximo; el Pedido sugiere hasta llegar aqui
   precio_costo numeric not null default 0,        -- por unidad
@@ -302,6 +303,7 @@ grant execute on function inv_agregar_miembro(uuid, text, text) to authenticated
 grant execute on function inv_reiniciar_stock(uuid, boolean) to authenticated;
 
 -- Si ya tenias las tablas de una version anterior, estas lineas agregan lo que falte (no hacen nada si ya existe)
+alter table inv_productos  add column if not exists orden int not null default 0;
 alter table inv_empresas  add column if not exists ver_costos text not null default 'admin' check (ver_costos in ('admin','bodega'));
 alter table inv_categorias add column if not exists unidad_salida text not null default 'un' check (unidad_salida in ('un','emp'));
 alter table inv_productos add column if not exists unidad_salida text check (unidad_salida in ('un','emp'));

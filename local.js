@@ -47,7 +47,7 @@ function localClient() {
   const defaults = {
     inv_categorias: () => ({ emoji: '📦', orden: 0 }),
     inv_proveedores: () => ({}),
-    inv_productos: () => ({ empaque: 'Unidad', unidades_por_empaque: 1, stock: 0, stock_minimo: 0, precio_costo: 0, precio_venta: 0, activo: true })
+    inv_productos: () => ({ empaque: 'Unidad', unidades_por_empaque: 1, stock: 0, orden: 0, stock_minimo: 0, precio_costo: 0, precio_venta: 0, activo: true })
   };
 
   function auth(email, password, nuevo) {

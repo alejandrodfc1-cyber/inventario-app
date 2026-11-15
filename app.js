@@ -10,7 +10,7 @@ const app = $('#app');
 const S = { user: null, perfil: null, emp: null, empresas: [], cats: [], provs: [], prods: [], q: '' };
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
-const VERSION = '2026-11-15.4';
+const VERSION = '2026-11-15.5';
 const negocio = () => S.emp?.nombre || CFG.negocio || '';
 const isAdmin = () => S.perfil?.rol === 'admin';
 const canEdit = () => ['admin', 'bodega'].includes(S.perfil?.rol);
@@ -46,7 +46,8 @@ async function loadAll() {
     sb.from('inv_productos').select('*').eq('empresa_id', S.emp.id).eq('activo', true).order('nombre')
   ]);
   for (const r of [c, p, pr]) if (r.error) throw r.error;
-  S.cats = c.data; S.provs = p.data; S.prods = pr.data;
+  // Productos: primero el orden elegido a mano (columna "orden", si existe) y luego alfabético
+  S.cats = c.data; S.provs = p.data; S.prods = pr.data.sort((a, b) => (Number(a.orden) || 0) - (Number(b.orden) || 0) || a.nombre.localeCompare(b.nombre, 'es'));
 }
 async function elegirEmpresa(id) {
   lsSet('inv_emp_' + S.user.id, id); M.lines = []; M.cat = ''; M.q = ''; S.q = '';
@@ -184,12 +185,28 @@ function viewHome() {
   $('#q').oninput = e => { S.q = e.target.value; const pos = e.target.selectionStart; viewHome(); const i = $('#q'); i.focus(); i.setSelectionRange(pos, pos); };
 }
 
+let ordenCat = null; // id de la categoría que se está ordenando (modo ▲ ▼)
 function viewCat(id) {
   const c = catOf(id); if (!c) return (location.hash = '#/');
   const ps = S.prods.filter(p => p.categoria_id === id);
-  const body = ps.length ? ps.map(prodRow).join('') : '<p class="center mut">Sin productos en esta categoría</p>';
-  shell(`${c.emoji} ${c.nombre}`, body, { back: '#/', fab: canEdit() ? 'newprod' : '' });
+  // Ordenar productos: solo el administrador, con 2 o más productos y si la base ya tiene la columna "orden"
+  const puedeOrdenar = isAdmin() && ps.length > 1 && 'orden' in ps[0], ordenando = puedeOrdenar && ordenCat === id;
+  const fila = (p, i) => `<div style="display:flex;gap:6px;align-items:center"><div class="row" style="flex:1;min-width:0;cursor:default"><div class="th lg" ${thumb(p.imagen_url)}>${p.imagen_url ? '' : (c.emoji || '📦')}</div><div class="mid"><b>${esc(p.nombre)}</b><small>${esc(p.empaque)}${upeOf(p) > 1 ? ' x' + num(upeOf(p)) : ''}</small></div></div>
+    <div style="display:flex;flex-direction:column;gap:6px"><button class="btn sec sm" ${i === 0 ? 'disabled' : ''} data-act="moveprod" data-id="${p.id}" data-d="-1" aria-label="Subir">▲</button><button class="btn sec sm" ${i === ps.length - 1 ? 'disabled' : ''} data-act="moveprod" data-id="${p.id}" data-d="1" aria-label="Bajar">▼</button></div></div>`;
+  const barra = puedeOrdenar ? `<p style="margin:0 0 10px"><button class="btn ${ordenando ? '' : 'sec'} full" data-act="ordcat" data-id="${id}">${ordenando ? '✓ Listo' : '↕ Ordenar productos'}</button></p>${ordenando ? '<p class="mut" style="font-size:13px;margin:0 0 8px">Con ▲ ▼ ordenas los productos como prefieras. Ese orden se ve en Mover y Stock.</p>' : ''}` : '';
+  const body = barra + (ps.length ? (ordenando ? ps.map(fila) : ps.map(prodRow)).join('') : '<p class="center mut">Sin productos en esta categoría</p>');
+  shell(`${c.emoji} ${c.nombre}`, body, { back: '#/', fab: canEdit() && !ordenando ? 'newprod' : '' });
   $('.fab')?.setAttribute('data-cat', id);
+}
+// Sube o baja un producto dentro de su categoría. Guarda el orden en la columna "orden".
+async function moverProd(id, dir) {
+  const p = prodOf(id); if (!p) return;
+  const L = S.prods.filter(x => x.categoria_id === p.categoria_id), i = L.findIndex(x => x.id === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= L.length) return;
+  [L[i], L[j]] = [L[j], L[i]];
+  const cambios = L.map((x, k) => [x, (k + 1) * 10]).filter(([x, o]) => (Number(x.orden) || 0) !== o);
+  for (const [x, o] of cambios) { const { error } = await sb.from('inv_productos').update({ orden: o }).eq('id', x.id); if (error) throw error; }
+  const y = window.scrollY; await loadAll(); viewCat(p.categoria_id); window.scrollTo(0, y);
 }
 
 function viewProv() {
@@ -865,6 +882,7 @@ function prodForm(p, catId) {
       const row = { empresa_id: S.emp.id, nombre: f.get('nombre').trim(), categoria_id: nz(f.get('categoria_id')), proveedor_id: nz(f.get('proveedor_id')), sku: nz(f.get('sku')?.trim()), empaque: f.get('empaque'),
         unidades_por_empaque: upe, capacidad: nz(f.get('capacidad')) === null ? null : fnum(f.get('capacidad')), unidad_capacidad: nz(f.get('uc')), unidad_salida: nz(f.get('us')),
         stock_minimo: mn, stock_maximo: mx, ...(canCost() ? { precio_costo: fnum(f.get('costo')), precio_venta: fnum(f.get('venta')) } : {}) };
+      if (!e && S.prods.length && 'orden' in S.prods[0]) row.orden = Math.max(0, ...S.prods.filter(x => x.categoria_id === row.categoria_id).map(x => Number(x.orden) || 0)) + 10; // los nuevos van al final de su categoría
       const file = f.get('img'); if (file?.size) row.imagen_url = await uploadImage(file, 'productos');
       if (e) { const { error } = await sb.from('inv_productos').update(row).eq('id', p.id); if (error) throw error; }
       else {
@@ -955,6 +973,8 @@ const actions = {
   mode: d => { if (M.modo !== d.m) { M.modo = d.m; M.lines = []; } viewMove(); },
   rmline: d => { M.lines.splice(+d.i, 1); M.lines.length ? paintLines() : closeModal(); },
   movecat: d => moverCat(d.id, +d.d).catch(fail),
+  moveprod: d => moverProd(d.id, +d.d).catch(fail),
+  ordcat: d => { ordenCat = ordenCat === d.id ? null : d.id; viewCat(d.id); },
   confirmmove: () => confirmMove(),
   backfoot: () => paintFoot(),
   submitmove: (d, el) => submitMove(el),
@@ -1008,6 +1028,7 @@ function render() {
   if (!S.perfil) return;
   if (!S.emp) return viewOnboard();
   const h = location.hash || '#/';
+  if (!h.startsWith('#/cat/')) ordenCat = null; // al salir de la categoría se apaga el modo Ordenar
   if (h.startsWith('#/cat/')) return viewCat(h.slice(6));
   ({ '#/conteo': viewConteo, '#/ajustes': viewAjustes, '#/stock': viewStock, '#/mas': viewMas, '#/mover': viewMove, '#/pedido': viewOrder, '#/proveedores': viewProv, '#/historial': viewHist, '#/usuarios': viewUsers }[h] || viewHome)();
 }
