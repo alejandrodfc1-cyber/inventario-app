@@ -114,6 +114,12 @@ declare e uuid; em text;
 begin
   if auth.uid() is null then raise exception 'Sin sesion'; end if;
   if coalesce(trim(p_nombre),'') = '' then raise exception 'Escribe el nombre de la empresa'; end if;
+  -- Quien ya pertenece a una empresa solo puede crear otra si es administrador de alguna (Bodega y Solo lectura no).
+  -- Quien aun no pertenece a ninguna (cuenta nueva) si puede crear la suya.
+  if exists (select 1 from inv_miembros where user_id = auth.uid())
+     and not exists (select 1 from inv_miembros where user_id = auth.uid() and rol = 'admin') then
+    raise exception 'Solo un administrador puede crear otra empresa';
+  end if;
   select email into em from inv_perfiles where id = auth.uid();
   insert into inv_empresas(nombre, creada_por) values (trim(p_nombre), auth.uid()) returning id into e;
   insert into inv_miembros(empresa_id, user_id, email, rol) values (e, auth.uid(), em, 'admin');

@@ -138,6 +138,8 @@ function localClient() {
     inv_crear_empresa(d, a) {
       if (!d.session) return err('Sin sesion');
       if (!(a.p_nombre || '').trim()) return err('Escribe el nombre de la empresa');
+      const mias = d.t.inv_miembros.filter(m => m.user_id === d.session);
+      if (mias.length && !mias.some(m => m.rol === 'admin')) return err('Solo un administrador puede crear otra empresa');
       const e = { id: uid(), nombre: a.p_nombre.trim(), creada_por: d.session, created_at: now() };
       d.t.inv_empresas.push(e);
       d.t.inv_miembros.push({ empresa_id: e.id, user_id: d.session, email: d.users.find(u => u.id === d.session)?.email, rol: 'admin', created_at: now() });

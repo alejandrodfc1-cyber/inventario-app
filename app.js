@@ -10,7 +10,7 @@ const app = $('#app');
 const S = { user: null, perfil: null, emp: null, empresas: [], cats: [], provs: [], prods: [], q: '' };
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
-const VERSION = '2026-11-14.8';
+const VERSION = '2026-11-14.9';
 const negocio = () => S.emp?.nombre || CFG.negocio || '';
 const isAdmin = () => S.perfil?.rol === 'admin';
 const canEdit = () => ['admin', 'bodega'].includes(S.perfil?.rol);
@@ -246,7 +246,7 @@ function viewAjustes() {
     <p class="mut" style="font-size:13px">Solo lectura nunca ve valores en dinero. Esto afecta a la pestaña Stock, las fichas, los precios al editar y las compras.</p>` : ''}
     <div class="sec-h">Mis empresas</div>
     ${S.empresas.map(e => `<button class="row" data-act="setemp" data-id="${e.id}"><div class="th">🏢</div><div class="mid"><b>${esc(e.nombre)}</b><small>${ROLES[e.rol]}</small></div>${e.id === S.emp.id ? '<span class="pill ok">Actual</span>' : '<span class="mut">Cambiar ›</span>'}</button>`).join('')}
-    <button class="btn sec full" data-act="newemp">＋ Crear otra empresa</button>
+    ${adm ? '<button class="btn sec full" data-act="newemp">＋ Crear otra empresa</button>' : ''}
     ${adm ? `<div class="sec-h">Categorías</div>${S.cats.length ? S.cats.map(c => `<button class="row" data-act="editcat" data-id="${c.id}"><div class="th" ${thumb(c.imagen_url)}>${c.imagen_url ? '' : esc(c.emoji)}</div><div class="mid"><b>${esc(c.nombre)}</b><small>Tocar para editar</small></div><span class="mut">✏️</span></button>`).join('') : '<p class="mut">Aún no hay categorías</p>'}
     <button class="btn sec full" data-act="newcat">＋ Nueva categoría</button>` : ''}
     ${adm ? `<div class="sec-h">Prueba en limpio</div>
