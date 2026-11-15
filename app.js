@@ -10,7 +10,7 @@ const app = $('#app');
 const S = { user: null, perfil: null, emp: null, empresas: [], cats: [], provs: [], prods: [], q: '' };
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
-const VERSION = '2026-11-15.3';
+const VERSION = '2026-11-15.4';
 const negocio = () => S.emp?.nombre || CFG.negocio || '';
 const isAdmin = () => S.perfil?.rol === 'admin';
 const canEdit = () => ['admin', 'bodega'].includes(S.perfil?.rol);
@@ -263,7 +263,8 @@ function viewAjustes() {
     <div class="sec-h">Mis empresas</div>
     ${S.empresas.map(e => `<button class="row" data-act="setemp" data-id="${e.id}"><div class="th">🏢</div><div class="mid"><b>${esc(e.nombre)}</b><small>${ROLES[e.rol]}</small></div>${e.id === S.emp.id ? '<span class="pill ok">Actual</span>' : '<span class="mut">Cambiar ›</span>'}</button>`).join('')}
     ${adm ? '<button class="btn sec full" data-act="newemp">＋ Crear otra empresa</button>' : ''}
-    ${adm ? `<div class="sec-h">Categorías</div>${S.cats.length ? S.cats.map(c => `<button class="row" data-act="editcat" data-id="${c.id}"><div class="th" ${thumb(c.imagen_url)}>${c.imagen_url ? '' : esc(c.emoji)}</div><div class="mid"><b>${esc(c.nombre)}</b><small>Tocar para editar</small></div><span class="mut">✏️</span></button>`).join('') : '<p class="mut">Aún no hay categorías</p>'}
+    ${adm ? `<div class="sec-h">Categorías</div>${S.cats.length > 1 ? '<p class="mut" style="font-size:13px;margin:0 0 8px">Con ▲ ▼ las ordenas como prefieras. Ese orden se ve en Inicio, Mover y Stock.</p>' : ''}${S.cats.length ? S.cats.map((c, i) => `<div style="display:flex;gap:6px;align-items:center"><button class="row" style="flex:1;min-width:0" data-act="editcat" data-id="${c.id}"><div class="th" ${thumb(c.imagen_url)}>${c.imagen_url ? '' : esc(c.emoji)}</div><div class="mid"><b>${esc(c.nombre)}</b><small>Tocar para editar</small></div><span class="mut">✏️</span></button>
+      ${S.cats.length > 1 ? `<div style="display:flex;flex-direction:column;gap:6px"><button class="btn sec sm" ${i === 0 ? 'disabled' : ''} data-act="movecat" data-id="${c.id}" data-d="-1" aria-label="Subir">▲</button><button class="btn sec sm" ${i === S.cats.length - 1 ? 'disabled' : ''} data-act="movecat" data-id="${c.id}" data-d="1" aria-label="Bajar">▼</button></div>` : ''}</div>`).join('') : '<p class="mut">Aún no hay categorías</p>'}
     <button class="btn sec full" data-act="newcat">＋ Nueva categoría</button>` : ''}
     ${adm ? `<div class="sec-h">Prueba en limpio</div>
     <button class="btn sec full" data-act="resetstock">🧹 Poner todas las cantidades en 0</button>
@@ -278,6 +279,15 @@ function viewAjustes() {
     if (r.error) return fail(r.error);
     await loadAll(); toast('Nombre actualizado ✓'); viewAjustes();
   };
+}
+// Sube o baja una categoría (▲ ▼). Guarda el orden en la columna "orden" de cada categoría.
+async function moverCat(id, dir) {
+  const L = S.cats.slice(), i = L.findIndex(c => c.id === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= L.length) return;
+  [L[i], L[j]] = [L[j], L[i]];
+  const cambios = L.map((c, k) => [c, (k + 1) * 10]).filter(([c, o]) => c.orden !== o);
+  for (const [c, o] of cambios) { const { error } = await sb.from('inv_categorias').update({ orden: o }).eq('id', c.id); if (error) throw error; }
+  const y = window.scrollY; await loadAll(); viewAjustes(); window.scrollTo(0, y);
 }
 function empresaForm() {
   form('Nueva empresa', '<label>Nombre de la empresa *</label><input name="nombre" required maxlength="60" autofocus><p class="mut" style="font-size:13px">Tendrá sus propios productos, proveedores y usuarios. Tú serás el administrador.</p>',
@@ -873,6 +883,7 @@ function catForm(c) {
     <label>Imagen</label><input type="file" name="img" accept="image/*">`,
     async f => {
       const row = { empresa_id: S.emp.id, nombre: f.get('nombre').trim(), emoji: f.get('emoji') || '📦', unidad_salida: f.get('us') === 'emp' ? 'emp' : 'un' };
+      if (!e) row.orden = Math.max(0, ...S.cats.map(x => Number(x.orden) || 0)) + 10; // las nuevas van al final
       const file = f.get('img'); if (file?.size) row.imagen_url = await uploadImage(file, 'categorias');
       const { error } = e ? await sb.from('inv_categorias').update(row).eq('id', c.id) : await sb.from('inv_categorias').insert(row); if (error) throw error;
     }, e ? async () => { const { error } = await sb.from('inv_categorias').delete().eq('id', c.id); if (error) throw error; } : null);
@@ -943,6 +954,7 @@ const actions = {
   },
   mode: d => { if (M.modo !== d.m) { M.modo = d.m; M.lines = []; } viewMove(); },
   rmline: d => { M.lines.splice(+d.i, 1); M.lines.length ? paintLines() : closeModal(); },
+  movecat: d => moverCat(d.id, +d.d).catch(fail),
   confirmmove: () => confirmMove(),
   backfoot: () => paintFoot(),
   submitmove: (d, el) => submitMove(el),
