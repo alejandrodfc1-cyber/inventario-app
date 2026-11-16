@@ -10,7 +10,7 @@ const app = $('#app');
 const S = { user: null, perfil: null, emp: null, empresas: [], cats: [], provs: [], prods: [], q: '' };
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
-const VERSION = '2026-11-16.1';
+const VERSION = '2026-11-16.2';
 const negocio = () => S.emp?.nombre || CFG.negocio || '';
 const isAdmin = () => S.perfil?.rol === 'admin';
 const canEdit = () => ['admin', 'bodega'].includes(S.perfil?.rol);
@@ -159,11 +159,12 @@ function viewHome() {
   const nb = S.prods.filter(p => estado(p) === 'low').length, no = S.prods.filter(p => estado(p) === 'out').length;
   const stat = (n, l, cls, attr) => `<button class="hs ${cls}" ${attr}><b>${n}</b><small>${l}</small></button>`;
   // Encabezado de marca: logo, empresa, indicadores que llevan a la pantalla correspondiente y buscador
-  let body = `<div class="hero2">
+  const hero = `<div class="hero2">
     <div class="h2top"><img class="hlogo" src="icons/icon-192.png" alt=""><div class="h2t"><small>INVENTARIO</small><h1>${esc(negocio())}</h1></div>
     <button class="hgear" data-go="#/ajustes" aria-label="Ajustes">⚙️</button></div>
     <div class="hstats">${stat(S.prods.length, 'Productos', '', 'data-go="#/stock"')}${stat(nb, 'Bajo mínimo', nb ? 'warn' : '', 'data-go="#/pedido"')}${stat(no, 'Agotados', no ? 'bad' : '', 'data-act="gostock" data-f="out"')}</div>
     <input class="search hsearch" id="q" type="search" placeholder="🔍 Buscar un producto…" value="${esc(S.q)}" autocomplete="off"></div>`;
+  let body = '', homeh = ''; // hero + fila "Categorías" quedan fijos arriba (.hstick)
   if (!q && canEdit() && sinStock) body += `<button class="banner info" data-go="#/conteo"><span class="bi">📝</span><div><b>Carga tu inventario inicial</b><small>Anota lo que hay hoy en bodega</small></div><span class="mut">›</span></button>`;
   if (q) {
     const r = S.prods.filter(p => (p.nombre + ' ' + (p.sku || '')).toLowerCase().includes(q));
@@ -172,7 +173,8 @@ function viewHome() {
     body += `<p class="center mut">Aún no hay categorías.${isAdmin() ? ' Crea la primera con el botón ＋' : ''}</p>`;
   } else {
     const info = c => { const ps = S.prods.filter(p => p.categoria_id === c.id); return { n: ps.length, al: ps.filter(p => p.stock <= p.stock_minimo).length }; };
-    body += `<div class="home-h"><h2>Categorías</h2><span class="mut">${S.cats.length} · ${S.prods.length} producto${S.prods.length === 1 ? '' : 's'}</span></div>` + S.cats.map(c => {
+    homeh = `<div class="home-h"><h2>Categorías</h2><span class="mut">${S.cats.length} · ${S.prods.length} producto${S.prods.length === 1 ? '' : 's'}</span></div>`;
+    body += S.cats.map(c => {
       const { n, al } = info(c);
       return `<button class="row crow" data-go="#/cat/${c.id}"><div class="th lg" ${thumb(c.imagen_url)}>${c.imagen_url ? '' : esc(c.emoji)}</div>
       <div class="mid"><b>${esc(c.nombre)}</b><small>${n} producto${n === 1 ? '' : 's'}</small></div>
@@ -181,7 +183,7 @@ function viewHome() {
     const sin = S.prods.filter(p => !p.categoria_id);
     if (sin.length) body += `<div class="sec-h">Sin categoría</div>` + sin.map(prodRow).join('');
   }
-  shell('Inventario', body, { nohead: true, fab: isAdmin() ? 'newcat' : '' });
+  shell('Inventario', `<div class="hstick">${hero}${homeh}</div>` + body, { nohead: true, fab: isAdmin() ? 'newcat' : '' });
   $('#q').oninput = e => { S.q = e.target.value; const pos = e.target.selectionStart; viewHome(); const i = $('#q'); i.focus(); i.setSelectionRange(pos, pos); };
 }
 
