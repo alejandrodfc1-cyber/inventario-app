@@ -7,7 +7,7 @@
 2. Tú (administrador) creas la empresa con su nombre.
 3. La agregas en Más → Usuarios con su correo y rol Administrador.
 - Tú quedas como administrador de esa empresa y ves sus datos. La app no tiene botón para salirte (se hace con SQL).
-- Un administrador puede crear más empresas; Bodega y Solo lectura no.
+- Un administrador puede crear más empresas; Administrador 2 y Solo lectura no.
 - Sus datos viven en tu base de datos.
 
 **B) Instalación separada para el cliente** (recomendado si es un negocio ajeno)
@@ -29,5 +29,5 @@ Para que el cliente necesite GitHub: solo si quiere ser dueño del hosting (opci
 
 ## Límites a recordar
 - Plan gratis de Supabase: pocos proyectos activos por cuenta (los pausados no cuentan), proyectos sin uso ~1 semana se pausan, sin respaldos automáticos (exportar CSV de vez en cuando).
-- Ocultar costos a Bodega/Lector es solo en pantalla; los precios sí llegan al dispositivo.
+- Ocultar costos a Administrador 2/Lector es solo en pantalla; los precios sí llegan al dispositivo.
 - Mantener varias copias implica actualizar cada una cuando cambie la app.

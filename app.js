@@ -10,17 +10,19 @@ const app = $('#app');
 const S = { user: null, perfil: null, emp: null, empresas: [], cats: [], provs: [], prods: [], q: '' };
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
-const VERSION = '2026-11-16.3';
+const VERSION = '2026-11-20.2';
 const negocio = () => S.emp?.nombre || CFG.negocio || '';
 const isAdmin = () => S.perfil?.rol === 'admin';
 const canEdit = () => ['admin', 'bodega'].includes(S.perfil?.rol);
-// Quien ve costos, precios y valores en dinero: el administrador siempre; Bodega solo si el administrador lo permite (Ajustes). Solo lectura nunca.
+// La pestaña Mover (salidas rápidas y compras) solo para el administrador. Administrador 2 (rol bodega) registra por Categoría + producto.
+const canMover = () => S.perfil?.rol === 'admin';
+// Quien ve costos, precios y valores en dinero: el administrador siempre; Administrador 2 (rol interno bodega) solo si el administrador lo permite (Ajustes). Solo lectura nunca.
 const canCost = () => S.perfil?.rol === 'admin' || (S.perfil?.rol === 'bodega' && S.emp?.ver_costos === 'bodega');
 const maxOf = p => Number(p.stock_maximo) || 0;
 const plural = w => { w = String(w || '').toLowerCase(); return w + (/[aeiouáéíóú]$/.test(w) ? 's' : 'es'); };
 // Cantidad (en unidades) escrita de forma natural: "4 cajas" si es exacta, si no "50 un"
 const fmtQ = (p, un) => { const u = Number(p.unidades_por_empaque) || 1; un = Number(un) || 0; return u > 1 && un % u === 0 ? `${num(un / u)} ${un / u === 1 ? String(p.empaque).toLowerCase() : plural(p.empaque)}` : `${num(un)} un`; };
-const ROLES = { admin: 'Administrador', bodega: 'Bodega', lector: 'Solo lectura' };
+const ROLES = { admin: 'Administrador', bodega: 'Administrador 2', lector: 'Solo lectura' };
 
 function toast(msg) {
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
@@ -130,7 +132,7 @@ function shell(title, body, opt = {}) {
     <span class="mut who">${esc(S.perfil.nombre || S.perfil.email)} · ${ROLES[S.perfil.rol]}</span></header>`}
     <div class="wrap">${body}</div>
     ${opt.fab ? `<button class="btn fab" data-act="${opt.fab}" aria-label="Agregar">＋</button>` : ''}
-    <nav>${nav('#/', '🏠', 'Inicio')}${canEdit() ? nav('#/mover', '🔄', 'Mover') : ''}${nav('#/stock', '📋', 'Stock')}${nav('#/pedido', '🛒', 'Pedido', n ? `<i>${n}</i>` : '')}<a href="#/mas" class="${['#/mas', '#/ajustes', '#/conteo', '#/proveedores', '#/historial', '#/usuarios'].includes(h) ? 'on' : ''}"><span>☰</span>Más</a></nav>`;
+    <nav>${nav('#/', '🏠', 'Inicio')}${canMover() ? nav('#/mover', '🔄', 'Mover') : ''}${nav('#/stock', '📋', 'Stock')}${nav('#/pedido', '🛒', 'Pedido', n ? `<i>${n}</i>` : '')}<a href="#/mas" class="${['#/mas', '#/ajustes', '#/conteo', '#/proveedores', '#/historial', '#/usuarios'].includes(h) ? 'on' : ''}"><span>☰</span>Más</a></nav>`;
 }
 
 /* ---------- vistas ---------- */
@@ -242,7 +244,7 @@ async function viewUsers() {
     ${u.user_id === S.user.id ? '' : `<button class="btn sec sm" data-act="rmmember" data-uid="${u.user_id}" data-email="${esc(u.email)}" aria-label="Quitar">✕</button>`}</div>`).join('')
     + `<div class="sec-h">Agregar usuario</div><form id="fadd" class="row" style="cursor:default;flex-wrap:wrap"><input name="email" type="email" required placeholder="correo@ejemplo.com" style="flex:1 1 200px">
     <select name="rol" style="width:auto">${rolOpts('bodega')}</select><button class="btn sm">Agregar</button></form>
-    <p class="mut" style="font-size:13px">La persona debe crear antes su cuenta con ese correo. <b>Administrador</b>: todo. <b>Bodega</b>: ingresos/salidas y editar productos y proveedores. <b>Solo lectura</b>: consulta.</p>`);
+    <p class="mut" style="font-size:13px">La persona debe crear antes su cuenta con ese correo. <b>Administrador</b>: todo. <b>Administrador 2</b>: ingresos/salidas y editar productos y proveedores. <b>Solo lectura</b>: consulta.</p>`);
   $('#fadd').onsubmit = async e => {
     e.preventDefault(); const f = new FormData(e.target);
     const r = await sb.rpc('inv_agregar_miembro', { p_empresa: S.emp.id, p_email: f.get('email'), p_rol: f.get('rol') });
@@ -277,7 +279,7 @@ function viewAjustes() {
     <form id="fname" class="row" style="cursor:default"><input name="nombre" value="${esc(S.emp.nombre)}" required maxlength="60" ${adm ? '' : 'disabled'} style="flex:1">${adm ? '<button class="btn sm">Guardar</button>' : ''}</form>
     ${adm ? '' : '<p class="mut" style="font-size:13px">Solo el administrador puede cambiar el nombre.</p>'}
     ${adm ? `<div class="sec-h">Privacidad</div><label style="margin-top:0">¿Quién ve costos, precios y valores en dinero?</label>
-    <select data-vc><option value="admin" ${S.emp.ver_costos !== 'bodega' ? 'selected' : ''}>Solo el administrador</option><option value="bodega" ${S.emp.ver_costos === 'bodega' ? 'selected' : ''}>Administrador y Bodega</option></select>
+    <select data-vc><option value="admin" ${S.emp.ver_costos !== 'bodega' ? 'selected' : ''}>Solo el administrador</option><option value="bodega" ${S.emp.ver_costos === 'bodega' ? 'selected' : ''}>Administrador y Administrador 2</option></select>
     <p class="mut" style="font-size:13px">Solo lectura nunca ve valores en dinero. Esto afecta a la pestaña Stock, las fichas, los precios al editar y las compras.</p>` : ''}
     <div class="sec-h">Mis empresas</div>
     ${S.empresas.map(e => `<button class="row" data-act="setemp" data-id="${e.id}"><div class="th">🏢</div><div class="mid"><b>${esc(e.nombre)}</b><small>${ROLES[e.rol]}</small></div>${e.id === S.emp.id ? '<span class="pill ok">Actual</span>' : '<span class="mut">Cambiar ›</span>'}</button>`).join('')}
@@ -1032,7 +1034,7 @@ function render() {
   const h = location.hash || '#/';
   if (!h.startsWith('#/cat/')) ordenCat = null; // al salir de la categoría se apaga el modo Ordenar
   if (h.startsWith('#/cat/')) return viewCat(h.slice(6));
-  ({ '#/conteo': viewConteo, '#/ajustes': viewAjustes, '#/stock': viewStock, '#/mas': viewMas, '#/mover': viewMove, '#/pedido': viewOrder, '#/proveedores': viewProv, '#/historial': viewHist, '#/usuarios': viewUsers }[h] || viewHome)();
+  ({ '#/conteo': viewConteo, '#/ajustes': viewAjustes, '#/stock': viewStock, '#/mas': viewMas, '#/mover': canMover() ? viewMove : viewHome, '#/pedido': viewOrder, '#/proveedores': viewProv, '#/historial': viewHist, '#/usuarios': viewUsers }[h] || viewHome)();
 }
 window.addEventListener('hashchange', () => {
   closeModal(); S.q = '';

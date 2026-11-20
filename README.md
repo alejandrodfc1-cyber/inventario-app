@@ -22,7 +22,7 @@ Los archivos `servidor-local.ps1` e `iniciar-servidor.bat` son solo para probar 
 - Una persona puede estar en varias empresas, con un rol distinto en cada una. Se cambia en **Más > Ajustes**.
 - Cada empresa tiene sus propios productos, categorías, proveedores, stock e historial.
 - **Administrador**: todo (nombre de la empresa, categorías, usuarios, eliminar).
-- **Bodega**: ingresos/salidas, crear y editar productos y proveedores.
+- **Administrador 2**: ingresos y salidas por Categoría + producto (no ve la pestaña Mover), crear y editar productos y proveedores.
 - **Solo lectura**: consultar.
 - Para agregar a alguien: *Más > Usuarios > Agregar usuario* (la persona debe haber creado antes su cuenta con ese correo).
 
@@ -34,7 +34,7 @@ Los archivos `servidor-local.ps1` e `iniciar-servidor.bat` son solo para probar 
 - **Mínimo y máximo**: cada producto tiene un mínimo (alerta) y un máximo (hasta dónde pedir), que se escriben en cajas o en unidades. Ej. Araucano mínimo 1 caja, máximo 8 cajas.
 - **Pedido**: todo lo que está bajo su máximo, por proveedor, con la cantidad que falta para llegar al máximo (editable). Sin máximo se sugiere el doble del mínimo. Genera una imagen para el proveedor que **no incluye stock ni costos**.
 - **Inventario inicial** (Más): se anota lo que hay físicamente (cajas + sueltas) y se guarda la diferencia como ingreso/salida con nota. Sirve también para ajustes por conteo.
-- **Privacidad** (Ajustes): el administrador decide si Bodega ve costos, precios y valores en dinero. Solo lectura nunca los ve. (Es una restricción de pantalla; para blindarla del todo habría que mover los precios a una tabla aparte.)
+- **Privacidad** (Ajustes): el administrador decide si Administrador 2 ve costos, precios y valores en dinero. Solo lectura nunca los ve. (Es una restricción de pantalla; para blindarla del todo habría que mover los precios a una tabla aparte.)
 - **Más**: Ajustes (empresa, categorías, cuenta), Proveedores, Historial, Usuarios.
 
 ## Nota
